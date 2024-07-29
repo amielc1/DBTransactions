@@ -1,0 +1,10 @@
+﻿namespace DBTransactions.Model;
+
+public class Account
+{
+    public string AccountId { get; set; }
+    public decimal Balance { get; set; }
+    public DateTime LastUpdate { get; set; }
+    public decimal? PendingBalance { get; set; }
+    public DateTime? PendingUpdate { get; set; }
+}
