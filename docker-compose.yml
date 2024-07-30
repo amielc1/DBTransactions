@@ -1,0 +1,37 @@
+version: '3.4'
+
+services:
+  dbtransactions:
+    image: ${DOCKER_REGISTRY-}dbtransactions
+    build:
+      context: .
+      dockerfile: DBTransactions/Dockerfile
+    depends_on:
+      - sqlserver
+    networks:
+      - mynetwork
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    environment:
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    networks:
+      - mynetwork
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1'"]
+      interval: 10s
+      retries: 10
+
+  adminer:
+    image: adminer
+    container_name: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:

@@ -11,7 +11,6 @@ builder.Services.AddDbContext<BankingContext>(
     options=> options.UseSqlServer("Server=localhost,1433;Database=BankingDB;User Id=sa;Password=YourStrong@Passw0rd;")
     );
 
-
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
