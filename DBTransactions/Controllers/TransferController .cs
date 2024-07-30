@@ -32,7 +32,7 @@ public class TransferController : ControllerBase
                 accountB.Balance += request.Amount;
 
                 await _context.SaveChangesAsync();
-                //await transaction.CommitAsync();
+                await transaction.CommitAsync();
 
                 return Ok();
             }
