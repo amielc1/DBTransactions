@@ -1,14 +1,15 @@
 using BankingApi.Data;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<BankingContext>(
     options=> options.UseSqlServer("Server=sqlserver;Database=BankingDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;")
+    //options => options.UseInMemoryDatabase("")
     );
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

@@ -1,17 +1,20 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using DBTransactions.Model;
+using System.Reflection;
 
 namespace BankingApi.Data
 {
     public class BankingContext : DbContext
     {
         public DbSet<Account> Accounts { get; set; }
+        public DbSet<TransactionLog> TransactionLogs { get; set; }
+        public DbSet<Fee> Fees { get; set; }
         public BankingContext(DbContextOptions<BankingContext> options): base(options)
         {
-        }
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        } 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            optionsBuilder.UseSqlServer("Server=sqlserver;Database=BankingDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;");
+            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         }
     }
 }
