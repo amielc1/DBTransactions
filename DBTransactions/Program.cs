@@ -8,8 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<BankingContext>(
-    options=> options.UseSqlServer("Server=sqlserver;Database=BankingDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;")
-    //options => options.UseInMemoryDatabase("")
+    options => options.UseInMemoryDatabase(nameof(BankingContext))
     );
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
