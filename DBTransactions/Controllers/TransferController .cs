@@ -1,5 +1,6 @@
 using BankingApi.Data;
 using DBTransactions.Model;
+using DBTransactions.Transactions;
 using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
@@ -7,21 +8,23 @@ using Microsoft.AspNetCore.Mvc;
 public class TransferController : ControllerBase
 {
     private readonly BankingContext _context;
+    private readonly AppTransaction _appTransaction;
 
-    public TransferController(BankingContext context)
+    public TransferController(BankingContext context, AppTransaction appTransaction)
     {
         _context = context;
+        _appTransaction = appTransaction;
     }
 
-    [HttpPost]
+    [HttpPost(nameof(TransactionTransfer))]
     public async Task<IActionResult> TransactionTransfer([FromBody] TransferRequest request)
     {
         using (var transaction = await _context.Database.BeginTransactionAsync())
         {
             try
             {
-                var accountA = _context.Accounts.Single(a => a.AccountId == request.FromAccountId);
-                var accountB = _context.Accounts.Single(b => b.AccountId == request.ToAccountId);
+                var accountA = _context.Accounts.Single(a => a.Id == request.FromAccountId);
+                var accountB = _context.Accounts.Single(b => b.Id == request.ToAccountId);
 
                 if (accountA.Balance < request.Amount)
                 {
@@ -44,39 +47,15 @@ public class TransferController : ControllerBase
         }
     }
 
+
+
+    [HttpPost(nameof(Transfer))]
     public async Task<IActionResult> Transfer([FromBody] TransferRequest request)
     {
         try
         {
-
-            var accountA = _context.Accounts.Single(a => a.AccountId == "A");
-            var accountB = _context.Accounts.Single(b => b.AccountId == "B");
-
-            if (accountA.PendingUpdate == null && accountB.PendingUpdate == null)
-            {
-                accountA.PendingBalance = accountA.Balance - 100;
-                accountA.PendingUpdate = DateTime.Now;
-
-                accountB.PendingBalance = accountB.Balance + 100;
-                accountB.PendingUpdate = DateTime.Now;
-
-                _context.SaveChanges();
-            }
-
-            var accountsToUpdate = _context.Accounts
-               .Where(a => a.PendingUpdate != null &&
-                           (a.AccountId == "A" || a.AccountId == "B"))
-               .ToList();
-
-            foreach (var account in accountsToUpdate)
-            {
-                account.Balance = account.PendingBalance.Value;
-                account.LastUpdate = account.PendingUpdate.Value;
-                account.PendingBalance = null;
-                account.PendingUpdate = null;
-            }
-
-            _context.SaveChanges();
+            _appTransaction.TransferFunds(request.FromAccountId, request.ToAccountId, request.Amount);
+           
             return Ok();
         }
         catch (Exception ex)

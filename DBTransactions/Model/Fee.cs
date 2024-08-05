@@ -2,7 +2,7 @@
 {
     public class Fee
     {
-        public int FeeId { get; set; }
+        public int Id { get; set; }
         public int TransactionId { get; set; }
         public decimal FeeAmount { get; set; }
         public DateTime FeeDate { get; set; }

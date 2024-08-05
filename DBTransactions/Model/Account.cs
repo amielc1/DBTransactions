@@ -2,7 +2,7 @@
 
 public class Account
 {
-    public string AccountId { get; set; }
+    public string Id { get; set; }
     public decimal Balance { get; set; }
     public DateTime LastUpdate { get; set; }
     public decimal? PendingBalance { get; set; }

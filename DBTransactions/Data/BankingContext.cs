@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using DBTransactions.Model;
 using System.Reflection;
+using DBTransactions.Data;
 
 namespace BankingApi.Data
 {
@@ -15,6 +16,9 @@ namespace BankingApi.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+            modelBuilder.Entity<Account>().HasData(SeedData.SeedAccount());
+            modelBuilder.Entity<TransactionLog>().HasData(SeedData.SeedTransactions());
+            modelBuilder.Entity<Fee>().HasData(SeedData.SeedFees());
         }
     }
 }

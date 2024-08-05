@@ -1,4 +1,5 @@
 using BankingApi.Data;
+using DBTransactions.Transactions;
 using Microsoft.EntityFrameworkCore;
 using System;
 
@@ -10,6 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<BankingContext>(
     options => options.UseInMemoryDatabase(nameof(BankingContext))
     );
+builder.Services.AddTransient<AppTransaction>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

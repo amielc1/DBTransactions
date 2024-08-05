@@ -5,12 +5,16 @@ namespace DBTransactions.Transactions
 {
     public class AppTransaction
     {
+        private readonly BankingContext context;
+        public AppTransaction(BankingContext bankingContext)
+        {
+              context = bankingContext;
+        }
         public void TransferFunds(string sourceAccountId, string targetAccountId, decimal amount)
         {
-            using (var context = new BankingContext())
-            {
-                var accountA = context.Accounts.Single(a => a.AccountId == sourceAccountId);
-                var accountB = context.Accounts.Single(b => b.AccountId == targetAccountId);
+            
+                var accountA = context.Accounts.Single(a => a.Id == sourceAccountId);
+                var accountB = context.Accounts.Single(b => b.Id == targetAccountId);
 
                 if (accountA.PendingUpdate == null && accountB.PendingUpdate == null)
                 {
@@ -26,7 +30,7 @@ namespace DBTransactions.Transactions
 
                      var transactionA = new TransactionLog
                     {
-                        AccountId = accountA.AccountId,
+                        AccountId = accountA.Id,
                         Amount = -amount,
                         PendingAmount = -amount,
                         PendingDate = DateTime.Now,
@@ -35,7 +39,7 @@ namespace DBTransactions.Transactions
 
                     var transactionB = new TransactionLog
                     {
-                        AccountId = accountB.AccountId,
+                        AccountId = accountB.Id,
                         Amount = amount,
                         PendingAmount = amount,
                         PendingDate = DateTime.Now,
@@ -48,7 +52,7 @@ namespace DBTransactions.Transactions
 
                     var feeA = new Fee
                     {
-                        TransactionId = transactionA.TransactionId,
+                        TransactionId = transactionA.Id,
                         FeeAmount = 2.50m,
                         PendingFeeAmount = 2.50m,
                         PendingFeeDate = DateTime.Now,
@@ -57,7 +61,7 @@ namespace DBTransactions.Transactions
 
                     var feeB = new Fee
                     {
-                        TransactionId = transactionB.TransactionId,
+                        TransactionId = transactionB.Id,
                         FeeAmount = 2.50m,
                         PendingFeeAmount = 2.50m,
                         PendingFeeDate = DateTime.Now,
@@ -78,14 +82,14 @@ namespace DBTransactions.Transactions
                         throw;
                     }
                 }
-            }
+            
         }
 
         private void UpdateStatusToCompleted(BankingContext context, string sourceAccountId, string targetAccountId)
         {
             var accountsToUpdate = context.Accounts
                 .Where(a => a.Status == Status.Pending &&
-                            (a.AccountId == sourceAccountId || a.AccountId == targetAccountId))
+                            (a.Id == sourceAccountId || a.Id == targetAccountId))
                 .ToList();
 
             foreach (var account in accountsToUpdate)
@@ -130,7 +134,7 @@ namespace DBTransactions.Transactions
         {
             var accountsToRollback = context.Accounts
                 .Where(a => a.Status == Status.Pending &&
-                            (a.AccountId == sourceAccountId || a.AccountId == targetAccountId))
+                            (a.Id == sourceAccountId || a.Id == targetAccountId))
                 .ToList();
 
             foreach (var account in accountsToRollback)
