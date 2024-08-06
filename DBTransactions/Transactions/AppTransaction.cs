@@ -8,32 +8,42 @@ namespace DBTransactions.Transactions
         private readonly BankingContext context;
         public AppTransaction(BankingContext bankingContext)
         {
-              context = bankingContext;
+            context = bankingContext;
         }
-        public void TransferFunds(string sourceAccountId, string targetAccountId, decimal amount)
+
+
+        public void TransferFunds(int sourceAccountId, int targetAccountId, decimal amount)
         {
-            
+            try
+            {
                 var accountA = context.Accounts.Single(a => a.Id == sourceAccountId);
                 var accountB = context.Accounts.Single(b => b.Id == targetAccountId);
 
-                if (accountA.PendingUpdate == null && accountB.PendingUpdate == null)
-                {
-                    accountA.PendingBalance = accountA.Balance - amount;
-                    accountA.PendingUpdate = DateTime.Now;
-                    accountA.Status = Status.Pending;
+                if (!(accountA.Status == Status.Completed && accountB.Status == Status.Completed))
+                    throw new Exception("The account in Pandeing stauts");
 
-                    accountB.PendingBalance = accountB.Balance + amount;
-                    accountB.PendingUpdate = DateTime.Now;
+                try
+                {
+                    accountA.Status = Status.Pending;
+                    accountA.Balance = accountA.Balance - amount;
+
                     accountB.Status = Status.Pending;
+                    accountB.Balance = accountB.Balance + amount;
 
                     context.SaveChanges();
+                }
+                catch (Exception e)
+                {
+                    // no roolback - nothing saved 
+                    throw;
+                }
 
-                     var transactionA = new TransactionLog
+                try
+                {
+                    var transactionA = new TransactionLog
                     {
                         AccountId = accountA.Id,
                         Amount = -amount,
-                        PendingAmount = -amount,
-                        PendingDate = DateTime.Now,
                         Status = Status.Pending
                     };
 
@@ -41,51 +51,49 @@ namespace DBTransactions.Transactions
                     {
                         AccountId = accountB.Id,
                         Amount = amount,
-                        PendingAmount = amount,
-                        PendingDate = DateTime.Now,
                         Status = Status.Pending
                     };
 
                     context.TransactionLogs.Add(transactionA);
                     context.TransactionLogs.Add(transactionB);
                     context.SaveChanges();
+                }
+                catch (Exception)
+                {
+                    RollbackAccount(context, sourceAccountId, targetAccountId, amount);   
+                    throw;
+                }
 
+                try
+                {
                     var feeA = new Fee
                     {
-                        TransactionId = transactionA.Id,
+                        AccountId = accountA.Id,
                         FeeAmount = 2.50m,
-                        PendingFeeAmount = 2.50m,
-                        PendingFeeDate = DateTime.Now,
-                        Status = Status.Pending
-                    };
-
-                    var feeB = new Fee
-                    {
-                        TransactionId = transactionB.Id,
-                        FeeAmount = 2.50m,
-                        PendingFeeAmount = 2.50m,
-                        PendingFeeDate = DateTime.Now,
                         Status = Status.Pending
                     };
 
                     context.Fees.Add(feeA);
-                    context.Fees.Add(feeB);
-
-                    try
-                    {
-                        context.SaveChanges();
-                        UpdateStatusToCompleted(context, sourceAccountId, targetAccountId);
-                    }
-                    catch
-                    {
-                        RollbackPendingChanges(context, sourceAccountId, targetAccountId);
-                        throw;
-                    }
+                    context.SaveChanges();
                 }
-            
+                catch (Exception)
+                {
+                   RollbackTransactionLogs(context, sourceAccountId, targetAccountId, amount);
+                    throw;
+                }
+
+                UpdateStatusToCompleted(context, sourceAccountId, targetAccountId);
+            }
+            catch
+            {
+                   RollbackTransactionLogs(context, sourceAccountId, targetAccountId, amount);
+                throw;
+            }
         }
 
-        private void UpdateStatusToCompleted(BankingContext context, string sourceAccountId, string targetAccountId)
+
+
+        private void UpdateStatusToCompleted(BankingContext context, int sourceAccountId, int targetAccountId)
         {
             var accountsToUpdate = context.Accounts
                 .Where(a => a.Status == Status.Pending &&
@@ -93,13 +101,8 @@ namespace DBTransactions.Transactions
                 .ToList();
 
             foreach (var account in accountsToUpdate)
-            {
-                account.Balance = account.PendingBalance.Value;
-                account.LastUpdate = account.PendingUpdate.Value;
-                account.PendingBalance = null;
-                account.PendingUpdate = null;
                 account.Status = Status.Completed;
-            }
+
 
             var transactionsToUpdate = context.TransactionLogs
                 .Where(t => t.Status == Status.Pending &&
@@ -107,69 +110,87 @@ namespace DBTransactions.Transactions
                 .ToList();
 
             foreach (var transaction in transactionsToUpdate)
-            {
-                transaction.TransactionDate = transaction.PendingDate.Value;
-                transaction.PendingAmount = null;
-                transaction.PendingDate = null;
                 transaction.Status = Status.Completed;
-            }
 
             var feesToUpdate = context.Fees
                 .Where(f => f.Status == Status.Pending)
                 .ToList();
 
             foreach (var fee in feesToUpdate)
-            {
-                fee.FeeDate = fee.PendingFeeDate.Value;
-                fee.PendingFeeAmount = null;
-                fee.PendingFeeDate = null;
                 fee.Status = Status.Completed;
-            }
 
             context.SaveChanges();
         }
-
-
-        private void RollbackPendingChanges(BankingContext context, string sourceAccountId, string targetAccountId)
+         
+        private void RollbackAccount(BankingContext context, int sourceAccountId, int targetAccountId, decimal amount)
         {
-            var accountsToRollback = context.Accounts
-                .Where(a => a.Status == Status.Pending &&
-                            (a.Id == sourceAccountId || a.Id == targetAccountId))
-                .ToList();
-
-            foreach (var account in accountsToRollback)
+            try
             {
-                if (account.PendingBalance.HasValue)
-                {
-                    account.Balance = account.Balance - (account.PendingBalance.Value - account.Balance);
-                }
+                var sourceAccount = context.Accounts.Single(x => x.Id == sourceAccountId && x.Status == Status.Pending);
+                sourceAccount.Balance += amount;
+                sourceAccount.Status = Status.Completed;
 
-                account.PendingBalance = null;
-                account.PendingUpdate = null;
-                account.Status = Status.None;
+                var targetAccount = context.Accounts.Single(x => x.Id == targetAccountId && x.Status == Status.Pending);
+                targetAccount.Balance -= amount;
+                targetAccount.Status = Status.Completed;
+
+                context.SaveChanges();
+            }
+            catch (Exception)
+            {
+
+                throw;
             }
 
-            var transactionsToRollback = context.TransactionLogs
-                .Where(t => t.Status == Status.Pending &&
-                            (t.AccountId == sourceAccountId || t.AccountId == targetAccountId))
-                .ToList();
-
-            foreach (var transaction in transactionsToRollback)
-            {
-                context.TransactionLogs.Remove(transaction);
-            }
-
-            var feesToRollback = context.Fees
-                .Where(f => f.Status == Status.Pending)
-                .ToList();
-
-            foreach (var fee in feesToRollback)
-            {
-                context.Fees.Remove(fee);
-            }
-
-            context.SaveChanges();
         }
+
+        private void RollbackTransactionLogs(BankingContext context, int sourceAccountId, int targetAccountId, decimal amount)
+        {
+            try
+            {
+                var transactionsToRollback = context.TransactionLogs
+                             .Where(t => t.Status == Status.Pending &&
+                                         (t.AccountId == sourceAccountId || t.AccountId == targetAccountId))
+                             .ToList();
+
+                foreach (var transaction in transactionsToRollback)
+                {
+                    context.TransactionLogs.Remove(transaction);
+                }
+                context.SaveChanges();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+         
+        private void RollbackFees(BankingContext context, int sourceAccountId, int targetAccountId, decimal amount)
+        {
+            try
+            {
+                var feesToRollback = context.Fees
+           .Where(f => f.Status == Status.Pending)
+           .ToList();
+
+                foreach (var fee in feesToRollback)
+                {
+                    context.Fees.Remove(fee);
+                }
+                context.SaveChanges();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
+        } 
+
+
+
+
 
     }
 }
